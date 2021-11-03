@@ -1,0 +1,15 @@
+# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  - package-ecosystem: "rust:cargo"
+    directory: "/"
+    # target-branch: "main"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+      time: "05:00"
+      timezone: "America/New_York"
+    reviewers:
+      - "tedbyron"
+    # open-pull-requests-limit: 5
