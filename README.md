@@ -16,7 +16,7 @@
   2. Build with Cargo (default target is `x86_64-unknown-linux-gnu` in `.cargo/config.toml`)
 
       ```sh
-      cargo build --release
+      cargo build --release # alias: cargo br
       ```
 
   3. A binary is produced in the `target/x86_64-unknown-linux-gnu/release` dir
