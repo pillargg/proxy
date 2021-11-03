@@ -11,9 +11,10 @@ license = "AGPL-3.0-only"
 keywords = ["aws", "lambda", "http"]
 categories = ["web-programming", "web-programming::http-server"]
 
+[features]
+
 [dependencies]
 lambda_http = "0.4.1"
-lambda_runtime = "0.4.1"
 tokio = "1.13.0"
 
 [profile.dev]
@@ -23,6 +24,4 @@ debug = 0
 lto = "fat"
 codegen-units = 1
 panic = "abort"
-
-[features]
 # strip = "symbols"

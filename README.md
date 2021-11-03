@@ -5,8 +5,6 @@
 
 # Build
 
-## Binary only
-
   1. Add `x86_64-unknown-linux-gnu` rustup build target
 
       ```sh
@@ -20,17 +18,3 @@
       ```
 
   3. A binary is produced in the `target/x86_64-unknown-linux-gnu/release` dir
-
-## Docker
-
-  1. Build with Docker
-
-      ```sh
-      docker run \
-        --rm \
-        --platform 'linux/arm64' \
-        --user "$(id -u)":"$(id -g)" \
-        --volume "${PWD}":/usr/src/myapp \
-        --workdir /usr/src/myapp rust:latest \
-        cargo build --release
-      ```
