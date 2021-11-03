@@ -31,6 +31,6 @@
         --platform 'linux/arm64' \
         --user "$(id -u)":"$(id -g)" \
         --volume "${PWD}":/usr/src/myapp \
-        --workdir /usr/src/myapp rust:${RUST_VERSION} \
+        --workdir /usr/src/myapp rust:latest \
         cargo build --release
       ```
