@@ -15,11 +15,11 @@ use lambda_http::{handler, Body, IntoResponse, Request, RequestExt, Response};
 async fn main() -> Result<(), Error> {
     std::env::set_var("RUST_BACKTRACE", "1"); // TODO: move to .env
     std::env::set_var("TARGET", "rs.fullstory.com"); // TODO: move to .env
+
     lambda_runtime::run(handler(entry)).await?;
     Ok(())
 }
 
-#[allow(clippy::unused_async)]
 async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, Error> {
     // Cache the query parameters.
     let query_params = req.query_string_parameters();
