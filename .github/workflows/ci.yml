@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -19,9 +20,10 @@ jobs:
           target: x86_64-unknown-linux-gnu
           override: true
       - uses: actions-rs/cargo@v1
-        name: Cargo check
+        name: Cargo clippy
         with:
-          command: check
+          command: clippy
+          args: --all-targets --all-features -- -D warnings
       - uses: actions-rs/cargo@v1
         name: Cargo test
         with:
@@ -31,11 +33,6 @@ jobs:
         with:
           command: fmt
           args: --all -- --check
-      - uses: actions-rs/cargo@v1
-        name: Cargo clippy
-        with:
-          command: clippy
-          args: --all-targets --all-features -- -D warnings
 
   build:
     name: Build

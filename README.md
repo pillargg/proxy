@@ -1,6 +1,6 @@
 <div align="center">
-  <h1><code>proxy</code></h1>
-  <p><strong>AWS Lambda HTTP(S) proxy.</strong></p>
+  <h1><code>aws-lambda-relay</code></h1>
+  <p><strong>HTTP relay for AWS Lambda.</strong></p>
 </div>
 
 # Build
