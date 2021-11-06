@@ -21,7 +21,7 @@ Target `x86_64-unknown-linux-gnu` for Amazon Linux 2 x86_64 or `aarch64-unknown-
     cargo install cross --version 0.2.1
     ```
 
-  - Build (uses [`tedbyron/relay:0.2.1`](https://hub.docker.com/repository/docker/tedbyron/relay) Docker image which is [`rustembedded/cross:x86_64-unknown-linux-gnu-0.2.1`](https://hub.docker.com/layers/rustembedded/cross/x86_64-unknown-linux-gnu-0.2.1/images/sha256-9f368a726a8ba08559451cd64160f7d2b47f6180ad024a46e31d29cc85dd81ff) built with `libssl-dev`)
+  - Build (uses [`rustembedded/cross:x86_64-unknown-linux-gnu-0.2.1`](https://hub.docker.com/layers/rustembedded/cross/x86_64-unknown-linux-gnu-0.2.1/images/sha256-9f368a726a8ba08559451cd64160f7d2b47f6180ad024a46e31d29cc85dd81ff) built with `libssl-dev`)
 
     ```sh
     cross build --release --target x86_64-unknown-linux-gnu
