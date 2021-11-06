@@ -3,17 +3,15 @@
   <p><strong>HTTP relay for AWS Lambda.</strong></p>
 </div>
 
-## Build
+## Build - x86_64
 
-Target `x86_64-unknown-linux-gnu` for Amazon Linux 2 x86_64 or `aarch64-unknown-linux-gnu` for AWS Graviton2 processors (ARM64).
-
-- Build on x86_64 GNU/Linux (`glibc`)
+- Building on x86_64 GNU/Linux (`glibc`)
 
   ```sh
   cargo build --release --target x86_64-unknown-linux-gnu
   ```
 
-- Build on other OS with Docker
+- Building on another OS with Docker
 
   - Install [`cross`](https://github.com/rust-embedded/cross)
 
@@ -21,7 +19,7 @@ Target `x86_64-unknown-linux-gnu` for Amazon Linux 2 x86_64 or `aarch64-unknown-
     cargo install cross --version 0.2.1
     ```
 
-  - Build (uses [`rustembedded/cross:x86_64-unknown-linux-gnu-0.2.1`](https://hub.docker.com/layers/rustembedded/cross/x86_64-unknown-linux-gnu-0.2.1/images/sha256-9f368a726a8ba08559451cd64160f7d2b47f6180ad024a46e31d29cc85dd81ff) built with `libssl-dev`)
+  - Build (uses [`rustembedded/cross:x86_64-unknown-linux-gnu-0.2.1`](https://hub.docker.com/layers/rustembedded/cross/x86_64-unknown-linux-gnu-0.2.1/images/sha256-9f368a726a8ba08559451cd64160f7d2b47f6180ad024a46e31d29cc85dd81ff) Docker image with `libssl-dev` installed)
 
     ```sh
     cross build --release --target x86_64-unknown-linux-gnu
