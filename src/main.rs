@@ -1,15 +1,10 @@
-#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
-use std::net::{Ipv4Addr, SocketAddr};
-
-// use hyper::service::Service;
 use lambda_http::lambda_runtime::{self, Context, Error};
-use lambda_http::request::{
-    ApiGatewayRequestContext, ApiGatewayV2RequestContext, Http, RequestContext,
-};
-use lambda_http::{handler, Body, IntoResponse, Request, RequestExt, Response};
+use lambda_http::{handler, IntoResponse, Request, RequestExt, Response};
+use reqwest::Client;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -20,6 +15,7 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
+#[allow(clippy::unused_async)]
 async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, Error> {
     // Cache the query parameters.
     let query_params = req.query_string_parameters();

@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  relay:
+    image: tedbyron/relay:0.2.1
+    build:
+      context: .
+      dockerfile: ./Dockerfile

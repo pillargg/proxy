@@ -5,40 +5,27 @@
 
 ## Build
 
-Target `x86_64-unknown-linux-gnu` for Amazon Linux 2 x86_64 or `aarch64-unknown-linux-gnu` for AWS Graviton2 processors that use ARM64.
+Target `x86_64-unknown-linux-gnu` for Amazon Linux 2 x86_64 or `aarch64-unknown-linux-gnu` for AWS Graviton2 processors (ARM64).
 
-- 64-bit GNU/Linux
+- Build on x86_64 GNU/Linux (`glibc`)
 
   ```sh
-  # alias: cargo br
   cargo build --release --target x86_64-unknown-linux-gnu
   ```
 
-- Docker
+- Build on other OS with Docker
 
-  ```sh
-  docker run \
-    --rm \
-    --platform linux/arm64 \
-    -v "${PWD}:/usr/src/relay" \
-    -w /usr/src/relay \
-    rust:latest \
-    cargo build --release --target x86_64-unknown-linux-gnu
-  ```
+  - Install [`cross`](https://github.com/rust-embedded/cross)
 
-  - Windows
-
-    ```ps
-    docker run `
-    --rm `
-    --platform linux/arm64 `
-    -v C:\Users\user\directory\relay\:/usr/src/relay `
-    -w /usr/src/relay `
-    rust:latest `
-    cargo build --release --target x86_64-unknown-linux-gnu
+    ```sh
+    cargo install cross --version 0.2.1
     ```
 
+  - Build (uses [`tedbyron/relay:0.2.1`](https://hub.docker.com/repository/docker/tedbyron/relay) Docker image which is [`rustembedded/cross:x86_64-unknown-linux-gnu-0.2.1`](https://hub.docker.com/layers/rustembedded/cross/x86_64-unknown-linux-gnu-0.2.1/images/sha256-9f368a726a8ba08559451cd64160f7d2b47f6180ad024a46e31d29cc85dd81ff) built with `libssl-dev`)
 
+    ```sh
+    cross build --release --target x86_64-unknown-linux-gnu
+    ```
 
 ## Dependency explanation
 
