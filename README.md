@@ -5,7 +5,7 @@
 
 ## Build
 
-The toolchain target `x86_64-unknown-linux-gnu` is required for AWS x86_64 processors.
+The toolchain target `x86_64-unknown-linux-gnu` is required to build for AWS x86_64 processors.
 
 ```sh
 rustup target add x86_64-unknown-linux-gnu
@@ -17,7 +17,7 @@ rustup target add x86_64-unknown-linux-gnu
 cargo build --release --target x86_64-unknown-linux-gnu
 ```
 
-### Building with [`cross`](https://github.com/rust-embedded/cross)
+### Building with [`cross`](https://github.com/rust-embedded/cross) and Docker
 
   1. Install `cross`
 
