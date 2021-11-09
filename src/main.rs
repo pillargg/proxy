@@ -5,55 +5,53 @@
 use std::env;
 use std::time::Duration;
 
-use lambda_http::lambda_runtime::{self, Context, Error};
+use lambda_http::lambda_runtime::{self, Context};
 use lambda_http::{handler, IntoResponse, Request, RequestExt, Response};
-use reqwest::Client;
+use reqwest::{Client, Url};
 
 use util::{IntoLambdaBody, IntoReqwestBody};
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // TODO: move to `.env`.
     env::set_var("RUST_BACKTRACE", "1");
-    env::set_var("TARGET", "https://rs.fullstory.com"); // Request target with scheme and host.
-    env::set_var("TIMEOUT", "10"); // Request timeout, in seconds.
+    env::set_var("RELAY_TARGET", "https://rs.fullstory.com"); // Request target with scheme and host.
+    env::set_var("RELAY_TIMEOUT", "10"); // Request timeout, in seconds.
 
     // Start the Lambda runtime and begin polling for events.
     lambda_runtime::run(handler(entry)).await?;
 
-    // Ok if no error is propogated from the runtime.
+    // Ok if no error is propagated from the runtime.
     Ok(())
 }
 
-/// Takes an HTTP request and a Lambda function execution context, and transforms the request before
-/// sending it to the domain specified by the `$TARGET` environment variable. Returns the HTTP
-/// response from `$TARGET`.
-#[allow(clippy::unused_async)]
-async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, Error> {
+/// Takes an HTTP request and a Lambda function execution context, and
+/// transforms the request before sending it to the domain specified by the
+/// `$RELAY_TARGET` environment variable. Returns the HTTP response.
+async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, lambda_runtime::Error> {
     // Get environment variables
-    let target = env::var("TARGET").expect("Missing environment variable $TARGET");
+    let target = env::var("RELAY_TARGET").expect("Missing environment variable $RELAY_TARGET");
     let timeout = Duration::from_secs(
-        env::var("TIMEOUT")
-            .expect("Missing environment variable $TIMEOUT")
+        env::var("RELAY_TIMEOUT")
+            .expect("Missing environment variable $RELAY_TIMEOUT")
             .parse::<u64>()
-            .expect("Environment variable $TIMEOUT not a valid u64"),
+            .expect("Environment variable $RELAY_TIMEOUT not a valid u64"),
     );
 
-    // Avoid a drop while borrowing later by getting query params and then converting a reference to
-    // it into a Vec.
+    // Parse the url and query parameters for the new request.
     let query_params = req.query_string_parameters();
-    let query_params: Vec<(&str, &str)> = query_params.iter().collect();
+    let url = Url::parse_with_params(&target, query_params.iter())?;
+
     // Move request into parts and body.
     let (parts, body) = req.into_parts();
-    // Parse the url and query parameters for the new request.
-    let url = reqwest::Url::parse_with_params(&target, &query_params)?;
 
-    // Creating and send the request, saving the response to return from the Lambda.
+    // Creating and send the request, saving the response.
     let reqwest_response = Client::builder()
         .build()?
         .request(parts.method, url)
-        .version(parts.version)
+        .headers(parts.headers)
         .body(body.into_reqwest_body())
+        .version(parts.version)
         .timeout(timeout)
         .send()
         .await?;
@@ -63,13 +61,11 @@ async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, Error> {
         .status(reqwest_response.status())
         .version(reqwest_response.version());
 
-    // Append headers to the response.
-    match lambda_response.headers_mut() {
-        Some(headers) => {
-            todo!()
-        }
-        _ => (), // FIX: this match arm will only happen if there is a builder error.
-    }
+    // Get a mutable ref to the response headers.
+    let headers = lambda_response.headers_mut().unwrap();
+    // Replace the Lambda response's headers with the reqwest response's.
+    // Clone: need ownership of the headers but `http::HeaderMap` is not `Copy`.
+    *headers = reqwest_response.headers().clone();
 
     // Convert the reqwest response body to a `lambda_http::Body`.
     let lambda_response =
@@ -79,19 +75,17 @@ async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, Error> {
 }
 
 mod util {
-    use bytes::Bytes;
-
     pub trait IntoReqwestBody {
         fn into_reqwest_body(self) -> reqwest::Body;
     }
 
     impl IntoReqwestBody for lambda_http::Body {
-        /// Converts the `lambda_http::Body` enum into a `reqwest::Body` struct.
+        /// Convert the `lambda_http::Body` into a `reqwest::Body`.
         fn into_reqwest_body(self) -> reqwest::Body {
             match self {
-                lambda_http::Body::Empty => reqwest::Body::from(""),
-                lambda_http::Body::Text(t) => reqwest::Body::from(t),
-                lambda_http::Body::Binary(b) => reqwest::Body::from(b),
+                Self::Empty => reqwest::Body::from(""),
+                Self::Text(t) => reqwest::Body::from(t),
+                Self::Binary(b) => reqwest::Body::from(b),
             }
         }
     }
@@ -100,13 +94,12 @@ mod util {
         fn into_lambda_body(self) -> lambda_http::Body;
     }
 
-    impl IntoLambdaBody for Bytes {
-        /// Zero-clone conversion of `Bytes` into `lambda_http::Body`.
+    impl IntoLambdaBody for bytes::Bytes {
+        /// Convert the `Bytes` into a `lambda_http::Body`.
         fn into_lambda_body(self) -> lambda_http::Body {
             if self.is_empty() {
                 lambda_http::Body::Empty
             } else {
-                // Copy the bytes into a Vec of bytes.
                 lambda_http::Body::Binary(self.to_vec())
             }
         }
@@ -115,12 +108,12 @@ mod util {
 
 #[cfg(test)]
 mod tests {
-    use lambda_http::http::Method;
-    use lambda_http::request::{
-        AlbRequestContext, ApiGatewayRequestContext, ApiGatewayV2RequestContext, Http,
-    };
+    // use lambda_http::http::Method;
+    // use lambda_http::request::{
+    //     AlbRequestContext, ApiGatewayRequestContext, ApiGatewayV2RequestContext, Http,
+    // };
 
-    use super::*;
+    // use super::*;
 
     // #[tokio::test]
     // async fn return_200_and_response() {
