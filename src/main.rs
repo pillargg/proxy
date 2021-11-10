@@ -9,10 +9,10 @@ use lambda_http::lambda_runtime::{self, Context};
 use lambda_http::{handler, IntoResponse, Request, RequestExt, Response};
 use reqwest::{Client, Url};
 
-use util::{IntoLambdaBody, IntoReqwestBody};
+use util::{IntoLambdaBody as _, IntoReqwestBody as _};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+async fn main() -> Result<(), lambda_runtime::Error> {
     // TODO: move to `.env`.
     env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RELAY_TARGET", "https://rs.fullstory.com"); // Request target with scheme and host.
