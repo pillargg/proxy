@@ -1,5 +1,0 @@
-[target.x86_64-unknown-linux-gnu]
-image = "tedbyron/relay:0.2.1"
-
-[build.env]
-passthrough = ["RUST_BACKTRACE", "RUST_LOG"]
