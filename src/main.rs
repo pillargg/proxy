@@ -108,43 +108,63 @@ mod util {
 
 #[cfg(test)]
 mod tests {
-    // use lambda_http::http::Method;
-    // use lambda_http::request::{
-    //     AlbRequestContext, ApiGatewayRequestContext, ApiGatewayV2RequestContext, Http,
-    // };
+    use std::collections::HashMap;
 
-    // use super::*;
+    use lambda_http::http::{Method, StatusCode};
+    use lambda_http::request::{ApiGatewayV2RequestContext, Http, RequestContext};
+    use lambda_http::{Body, Request};
+    use mockito::mock;
 
-    // #[tokio::test]
-    // async fn return_200_and_response() {
-    //     let mut request = lambda_http::Request::new(lambda_http::Body::Empty);
-    //     *request.uri_mut() = "/".parse().unwrap();
-    //     request
-    //         .extensions_mut()
-    //         .insert::<RequestContext>(RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext {
-    //             route_key: None,
-    //             account_id: None,
-    //             stage: None,
-    //             request_id: None,
-    //             authorizer: None,
-    //             apiid: None,
-    //             domain_name: None,
-    //             domain_prefix: None,
-    //             time: None,
-    //             time_epoch: 0,
-    //             http: Http {
-    //                 method: Method::GET,
-    //                 path: None,
-    //                 protocol: None,
-    //                 source_ip: Some("127.0.0.1".to_string()),
-    //                 user_agent: None,
-    //             },
-    //         }));
-    //     let response = entrypoint(request, Context::default())
-    //         .await
-    //         .unwrap()
-    //         .into_response();
-    //     assert_eq!(StatusCode::OK, response.status());
-    //     assert!(!response.body().is_empty())
-    // }
+    use super::*;
+
+    #[tokio::test]
+    async fn test_entry_201() {
+        let mock = mock("POST", "/test")
+            .with_status(201)
+            .with_header("content-type", "text/plain")
+            .with_header("x-api-key", "1234")
+            .with_body("test")
+            .create();
+
+        let url = &mockito::server_url();
+
+        env::set_var("RELAY_TARGET", url);
+        env::set_var("RELAY_TIMEOUT", "10");
+
+        let mut request = Request::new(Body::from("test"));
+        *request.uri_mut() = "https://test.com/test".parse().unwrap();
+
+        request
+            .extensions_mut()
+            .insert::<RequestContext>(RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext {
+                account_id: String::new(),
+                api_id: String::new(),
+                authorizer: HashMap::new(),
+                domain_name: String::new(),
+                domain_prefix: String::new(),
+                http: Http {
+                    method: Method::POST,
+                    path: "/test".to_owned(),
+                    protocol: String::new(),
+                    source_ip: "127.0.0.1".to_owned(),
+                    user_agent: String::new(),
+                },
+                request_id: String::new(),
+                route_key: String::new(),
+                stage: String::new(),
+                time: String::new(),
+                time_epoch: 0,
+            }));
+
+        {
+            let response = entry(request, Context::default())
+                .await
+                .unwrap()
+                .into_response();
+        }
+        mock.assert();
+
+        // assert_eq!(StatusCode::OK, response.status());
+        // assert_eq!(response.into_body(), lambda_http::Body::from("test"));
+    }
 }
