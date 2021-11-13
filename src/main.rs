@@ -2,11 +2,16 @@
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
+#[cfg(test)]
+mod test;
+mod util;
+
 use std::env;
 use std::time::Duration;
 
+use lambda_http::http::Version;
 use lambda_http::lambda_runtime::{self, Context};
-use lambda_http::{handler, IntoResponse, Request, RequestExt, Response};
+use lambda_http::{handler, IntoResponse, Request, Response};
 use reqwest::{Client, Url};
 
 use util::{IntoLambdaBody as _, IntoReqwestBody as _};
@@ -38,23 +43,31 @@ async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, lambda_run
             .expect("Environment variable $RELAY_TIMEOUT not a valid u64"),
     );
 
-    // Parse the url and query parameters for the new request.
-    let query_params = req.query_string_parameters();
-    let url = Url::parse_with_params(&target, query_params.iter())?;
-
     // Move request into parts and body.
     let (parts, body) = req.into_parts();
 
-    // Creating and send the request, saving the response.
-    let reqwest_response = Client::builder()
-        .build()?
+    // Join the url, path, and query parameters for the new request.
+    let mut url = Url::parse(&target).unwrap();
+    url.set_path(parts.uri.path());
+    url.set_query(parts.uri.query());
+
+    // Build the client.
+    let mut reqwest_client = Client::builder().use_rustls_tls();
+    if parts.version == Version::HTTP_2 {
+        reqwest_client = reqwest_client.http2_prior_knowledge();
+    }
+    let reqwest_client = reqwest_client.build().unwrap();
+
+    // Build and send the request.
+    let reqwest_response = reqwest_client
         .request(parts.method, url)
         .headers(parts.headers)
         .body(body.into_reqwest_body())
         .version(parts.version)
         .timeout(timeout)
         .send()
-        .await?;
+        .await
+        .unwrap();
 
     // Create a new response to return from the Lambda function.
     let mut lambda_response = Response::builder()
@@ -68,103 +81,9 @@ async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, lambda_run
     *headers = reqwest_response.headers().clone();
 
     // Convert the reqwest response body to a `lambda_http::Body`.
-    let lambda_response =
-        lambda_response.body(reqwest_response.bytes().await?.into_lambda_body())?;
+    let lambda_response = lambda_response
+        .body(reqwest_response.bytes().await.unwrap().into_lambda_body())
+        .unwrap();
 
     Ok(lambda_response)
-}
-
-mod util {
-    pub trait IntoReqwestBody {
-        fn into_reqwest_body(self) -> reqwest::Body;
-    }
-
-    impl IntoReqwestBody for lambda_http::Body {
-        /// Convert the `lambda_http::Body` into a `reqwest::Body`.
-        fn into_reqwest_body(self) -> reqwest::Body {
-            match self {
-                Self::Empty => reqwest::Body::from(""),
-                Self::Text(t) => reqwest::Body::from(t),
-                Self::Binary(b) => reqwest::Body::from(b),
-            }
-        }
-    }
-
-    pub trait IntoLambdaBody {
-        fn into_lambda_body(self) -> lambda_http::Body;
-    }
-
-    impl IntoLambdaBody for bytes::Bytes {
-        /// Convert the `Bytes` into a `lambda_http::Body`.
-        fn into_lambda_body(self) -> lambda_http::Body {
-            if self.is_empty() {
-                lambda_http::Body::Empty
-            } else {
-                lambda_http::Body::Binary(self.to_vec())
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
-
-    use lambda_http::http::{Method, StatusCode};
-    use lambda_http::request::{ApiGatewayV2RequestContext, Http, RequestContext};
-    use lambda_http::{Body, Request};
-    use mockito::mock;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_entry_201() {
-        let mock = mock("POST", "/test")
-            .with_status(201)
-            .with_header("content-type", "text/plain")
-            .with_header("x-api-key", "1234")
-            .with_body("test")
-            .create();
-
-        let url = &mockito::server_url();
-
-        env::set_var("RELAY_TARGET", url);
-        env::set_var("RELAY_TIMEOUT", "10");
-
-        let mut request = Request::new(Body::from("test"));
-        *request.uri_mut() = "https://test.com/test".parse().unwrap();
-
-        request
-            .extensions_mut()
-            .insert::<RequestContext>(RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext {
-                account_id: String::new(),
-                api_id: String::new(),
-                authorizer: HashMap::new(),
-                domain_name: String::new(),
-                domain_prefix: String::new(),
-                http: Http {
-                    method: Method::POST,
-                    path: "/test".to_owned(),
-                    protocol: String::new(),
-                    source_ip: "127.0.0.1".to_owned(),
-                    user_agent: String::new(),
-                },
-                request_id: String::new(),
-                route_key: String::new(),
-                stage: String::new(),
-                time: String::new(),
-                time_epoch: 0,
-            }));
-
-        {
-            let response = entry(request, Context::default())
-                .await
-                .unwrap()
-                .into_response();
-        }
-        mock.assert();
-
-        // assert_eq!(StatusCode::OK, response.status());
-        // assert_eq!(response.into_body(), lambda_http::Body::from("test"));
-    }
 }
