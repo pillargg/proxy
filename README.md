@@ -1,6 +1,7 @@
 <div align="center">
   <h1><code>aws-lambda-relay</code></h1>
   <p><strong>HTTP relay for AWS Lambda.</strong></p>
+  <a href="https://github.com/pillargg/relay/actions/workflows/ci.yml"><img alt="GitHub Actions CI status" src="https://github.com/pillargg/relay/actions/workflows/ci.yml/badge.svg"></a>
 </div>
 
 ## Build
@@ -32,7 +33,13 @@ cargo build --release
      cargo build --release --target x86_64-unknown-linux-gnu
    ```
 
-## Dependency explanation
+## Test
+
+```sh
+cargo test --release --all-targets
+```
+
+## Dependencies
 
 - [`bytes`](https://lib.rs/crates/bytes) Bytes container used by `reqwest::Response::bytes`
 
