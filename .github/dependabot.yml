@@ -2,7 +2,7 @@
 
 version: 2
 updates:
-  - package-ecosystem: "rust:cargo"
+  - package-ecosystem: "cargo"
     directory: "/"
     # target-branch: "main"
     schedule:
