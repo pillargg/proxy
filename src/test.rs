@@ -1,3 +1,5 @@
+#![cfg(test)]
+
 use std::env;
 
 use lambda_http::http::{Method, StatusCode, Version};
@@ -7,8 +9,10 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use super::entry;
 
+// HTTP/1.1 POST payload.
 #[tokio::test]
 async fn test_post_http11() {
+    // Start the mock server and get its URL.
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/test"))
@@ -26,7 +30,7 @@ async fn test_post_http11() {
     *request.method_mut() = Method::POST;
     *request.version_mut() = Version::HTTP_11;
 
-    // Test the function.
+    // Test the `entry` function.
     let response = entry(request, Context::default())
         .await
         .unwrap()
@@ -36,8 +40,10 @@ async fn test_post_http11() {
     assert_eq!(response.into_body(), Body::Binary("success".into()));
 }
 
+// HTTP/2 POST payload.
 #[tokio::test]
 async fn test_post_http2() {
+    // Start the mock server and get its URL.
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/test"))
@@ -55,7 +61,7 @@ async fn test_post_http2() {
     *request.method_mut() = Method::POST;
     *request.version_mut() = Version::HTTP_2;
 
-    // Test the function.
+    // Test the `entry` function.
     let response = entry(request, Context::default())
         .await
         .unwrap()

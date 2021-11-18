@@ -1,4 +1,6 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::cargo)]
+// https://github.com/awslabs/aws-lambda-rust-runtime/commit/ba9040ceec6dd1cd1273cb2d0359f0f504f5417b
+#![allow(clippy::multiple_crate_versions)]
 #![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
@@ -11,36 +13,47 @@ use std::time::Duration;
 
 use lambda_http::http::Version;
 use lambda_http::lambda_runtime::{self, Context};
-use lambda_http::{handler, IntoResponse, Request, Response};
+use lambda_http::{IntoResponse, Request, Response};
 use reqwest::{Client, Url};
 
-use util::{IntoLambdaBody as _, IntoReqwestBody as _};
+use util::{IntoLambdaBody as _, IntoReqwestBody as _, SourceAddr as _};
 
 #[tokio::main]
 async fn main() -> Result<(), lambda_runtime::Error> {
-    // TODO: move to `.env`.
-    env::set_var("RUST_BACKTRACE", "1");
-    env::set_var("RELAY_TARGET", "https://rs.fullstory.com"); // Request target with scheme and host.
-    env::set_var("RELAY_TIMEOUT", "10"); // Request timeout, in seconds.
+    tracing_subscriber::fmt::try_init()?;
+
+    // TODO: use context.env_config
+    env::set_var("RELAY_TARGET", "https://rs.fullstory.com");
+    env::set_var("RELAY_TIMEOUT", "10");
 
     // Start the Lambda runtime and begin polling for events.
-    lambda_runtime::run(handler(entry)).await?;
+    lambda_runtime::run(lambda_http::handler(entry)).await?;
 
-    // Ok if no error is propagated from the runtime.
     Ok(())
 }
 
-/// Takes an HTTP request and a Lambda function execution context, and
-/// transforms the request before sending it to the domain specified by the
-/// `$RELAY_TARGET` environment variable. Returns the HTTP response.
+/// Takes an HTTP request and a Lambda function execution context, and transforms the request before
+/// sending it to the domain specified by the `$RELAY_TARGET` environment variable. Returns the HTTP
+/// response.
+#[tracing::instrument(
+    level = "info",
+    err,
+    skip_all,
+    fields(
+        // source_addr = req.source_addr(),
+        uri = %req.uri(),
+        method = %req.method(),
+        // version = req.version(),
+    ),
+)]
 async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, lambda_runtime::Error> {
     // Get environment variables
-    let target = env::var("RELAY_TARGET").expect("Missing environment variable $RELAY_TARGET");
+    let target = env::var("RELAY_TARGET").expect("Missing $RELAY_TARGET environment variable");
     let timeout = Duration::from_secs(
         env::var("RELAY_TIMEOUT")
-            .expect("Missing environment variable $RELAY_TIMEOUT")
+            .expect("Missing $RELAY_TIMEOUT environment variable")
             .parse::<u64>()
-            .expect("Environment variable $RELAY_TIMEOUT not a valid u64"),
+            .expect("$RELAY_TIMEOUT must be a valid u64"),
     );
 
     // Move request into parts and body.
@@ -74,13 +87,12 @@ async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, lambda_run
         .status(reqwest_response.status())
         .version(reqwest_response.version());
 
-    // Get a mutable ref to the response headers.
+    // Add the response headers.
     let headers = lambda_response.headers_mut().unwrap();
-    // Replace the Lambda response's headers with the reqwest response's.
     // Clone: need ownership of the headers but `http::HeaderMap` is not `Copy`.
     *headers = reqwest_response.headers().clone();
 
-    // Convert the reqwest response body to a `lambda_http::Body`.
+    // Add the response body.
     let lambda_response = lambda_response
         .body(reqwest_response.bytes().await.unwrap().into_lambda_body())
         .unwrap();

@@ -8,7 +8,7 @@ use lambda_http::RequestExt;
 /// Used to obtain the source IP address of a `lambda_http::RequestContext` if
 /// it exists.
 pub trait SourceAddr {
-    /// Retrieves the source IP address.
+    /// Retrieves the source IP address, if available.
     fn source_addr(&self) -> Option<String>;
 }
 
