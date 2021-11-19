@@ -16,13 +16,15 @@ use lambda_http::lambda_runtime::{self, Context};
 use lambda_http::{IntoResponse, Request, Response};
 use reqwest::{Client, Url};
 
-use util::{IntoLambdaBody as _, IntoReqwestBody as _, SourceAddr as _};
+use crate::util::{GetRequestId, GetSourceIp, IntoLambdaBody, IntoReqwestBody};
 
 #[tokio::main]
 async fn main() -> Result<(), lambda_runtime::Error> {
+    // Install a global tracing subscriber that listens for events and filters based on `$RUST_LOG`.
     tracing_subscriber::fmt::try_init()?;
 
-    // TODO: use context.env_config
+    // TODO: use Lambda env vars
+    env::set_var("RUST_LOG", "TRACE");
     env::set_var("RELAY_TARGET", "https://rs.fullstory.com");
     env::set_var("RELAY_TIMEOUT", "10");
 
@@ -37,65 +39,69 @@ async fn main() -> Result<(), lambda_runtime::Error> {
 /// response.
 #[tracing::instrument(
     level = "info",
-    err,
-    skip_all,
+    err,      // Emit any errors from the function.
+    skip_all, // Skip all fields except the ones below.
     fields(
-        // source_addr = req.source_addr(),
-        uri = %req.uri(),
-        method = %req.method(),
-        // version = req.version(),
+        source.id = ?req.id(),
+        source.addr = ?req.source_ip(),
     ),
 )]
 async fn entry(req: Request, _: Context) -> Result<impl IntoResponse, lambda_runtime::Error> {
+    tracing::trace!(source.method = %req.method());
+    tracing::trace!(source.version = ?req.version());
+
     // Get environment variables
     let target = env::var("RELAY_TARGET").expect("Missing $RELAY_TARGET environment variable");
-    let timeout = Duration::from_secs(
-        env::var("RELAY_TIMEOUT")
-            .expect("Missing $RELAY_TIMEOUT environment variable")
-            .parse::<u64>()
-            .expect("$RELAY_TIMEOUT must be a valid u64"),
-    );
+    tracing::trace!(%target);
+    let timeout = env::var("RELAY_TIMEOUT")
+        .expect("Missing $RELAY_TIMEOUT environment variable")
+        .parse::<u64>()
+        .expect("$RELAY_TIMEOUT must be a valid u64");
+    tracing::trace!(timeout);
+    let timeout = Duration::from_secs(timeout);
 
     // Move request into parts and body.
     let (parts, body) = req.into_parts();
+    tracing::trace!(?body);
 
     // Join the url, path, and query parameters for the new request.
-    let mut url = Url::parse(&target).unwrap();
+    let mut url = Url::parse(&target)?;
     url.set_path(parts.uri.path());
     url.set_query(parts.uri.query());
+    tracing::info!(parsed_url = %url);
 
     // Build the client.
-    let mut reqwest_client = Client::builder().use_rustls_tls();
+    let mut client = Client::builder().use_rustls_tls();
     if parts.version == Version::HTTP_2 {
-        reqwest_client = reqwest_client.http2_prior_knowledge();
+        client = client.http2_prior_knowledge();
     }
-    let reqwest_client = reqwest_client.build().unwrap();
+    tracing::trace!(client_builder = ?client);
+    let client = client.build()?;
+    tracing::trace!(?client);
 
     // Build and send the request.
-    let reqwest_response = reqwest_client
+    let req = client
         .request(parts.method, url)
         .headers(parts.headers)
         .body(body.into_reqwest_body())
         .version(parts.version)
-        .timeout(timeout)
-        .send()
-        .await
-        .unwrap();
+        .timeout(timeout);
+    tracing::info!(request = ?req);
+
+    let reqwest_res = req.send().await?;
 
     // Create a new response to return from the Lambda function.
-    let mut lambda_response = Response::builder()
-        .status(reqwest_response.status())
-        .version(reqwest_response.version());
+    let mut lambda_res = Response::builder()
+        .status(reqwest_res.status())
+        .version(reqwest_res.version());
 
-    // Add the response headers.
-    let headers = lambda_response.headers_mut().unwrap();
+    // Add the response headers. Unwrap is safe because we  builder errors.
+    let headers = lambda_res.headers_mut().unwrap();
     // Clone: need ownership of the headers but `http::HeaderMap` is not `Copy`.
-    *headers = reqwest_response.headers().clone();
+    *headers = reqwest_res.headers().clone();
 
     // Add the response body.
-    let lambda_response = lambda_response
-        .body(reqwest_response.bytes().await.unwrap().into_lambda_body())
-        .unwrap();
+    let lambda_res = lambda_res.body(reqwest_res.bytes().await?.into_lambda_body())?;
 
-    Ok(lambda_response)
+    Ok(lambda_res)
 }

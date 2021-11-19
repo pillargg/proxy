@@ -1,20 +1,54 @@
 //! Utility traits.
 
+use lambda_http::lambda_runtime;
 use lambda_http::request::{
     ApiGatewayRequestContext, ApiGatewayV2RequestContext, Http, Identity, RequestContext,
 };
-use lambda_http::RequestExt;
 
-/// Used to obtain the source IP address of a `lambda_http::RequestContext` if
-/// it exists.
-pub trait SourceAddr {
-    /// Retrieves the source IP address, if available.
-    fn source_addr(&self) -> Option<String>;
+/// Get the request context from a `lambda_http::Request`'s extensions.
+trait GetRequestContext<'a> {
+    /// Get the request context if it exists.
+    fn context(&'a self) -> Result<&'a RequestContext, lambda_runtime::Error>;
 }
 
-impl SourceAddr for lambda_http::Request {
-    fn source_addr(&self) -> Option<String> {
-        match self.request_context() {
+impl<'a> GetRequestContext<'a> for lambda_http::Request {
+    fn context(&'a self) -> Result<&'a RequestContext, lambda_runtime::Error> {
+        Ok(self
+            .extensions()
+            .get::<RequestContext>()
+            .ok_or("request did not contain a request context")?)
+    }
+}
+
+/// Get the request ID from a `lambda_http::Request`.
+pub trait GetRequestId<'a> {
+    /// Get the request ID if it exists.
+    fn id(&'a self) -> Result<&'a str, lambda_runtime::Error>;
+}
+
+impl<'a> GetRequestId<'a> for lambda_http::Request {
+    fn id(&'a self) -> Result<&'a str, lambda_runtime::Error> {
+        match self.context()? {
+            RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext { request_id, .. })
+            | RequestContext::ApiGateway(ApiGatewayRequestContext { request_id, .. }) => {
+                Ok(request_id)
+            }
+            RequestContext::Alb(_) => {
+                Err(Box::from("request came from an Application Load Balancer"))
+            }
+        }
+    }
+}
+
+/// Get the source IP address from a `lambda_http::Request`.
+pub trait GetSourceIp<'a> {
+    /// Get the source IP address if it exists.
+    fn source_ip(&'a self) -> Result<&'a str, lambda_runtime::Error>;
+}
+
+impl<'a> GetSourceIp<'a> for lambda_http::Request {
+    fn source_ip(&'a self) -> Result<&'a str, lambda_runtime::Error> {
+        match self.context()? {
             RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext {
                 http: Http { source_ip, .. },
                 ..
@@ -22,8 +56,10 @@ impl SourceAddr for lambda_http::Request {
             | RequestContext::ApiGateway(ApiGatewayRequestContext {
                 identity: Identity { source_ip, .. },
                 ..
-            }) => Some(source_ip),
-            RequestContext::Alb(_) => None,
+            }) => Ok(source_ip),
+            RequestContext::Alb(_) => {
+                Err(Box::from("request came from an Application Load Balancer"))
+            }
         }
     }
 }
@@ -60,6 +96,7 @@ impl IntoLambdaBody for bytes::Bytes {
     }
 }
 
+/// Utility traits for tests.
 #[cfg(test)]
 pub mod test {
     use std::collections::HashMap;

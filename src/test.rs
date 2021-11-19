@@ -3,11 +3,13 @@
 use std::env;
 
 use lambda_http::http::{Method, StatusCode, Version};
+use lambda_http::request::RequestContext;
 use lambda_http::{Body, Context, IntoResponse, Request};
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use super::entry;
+use crate::entry;
+use crate::util::test::MockRequestContext;
 
 // HTTP/1.1 POST payload.
 #[tokio::test]
@@ -21,6 +23,7 @@ async fn test_post_http11() {
         .await;
     let target = server.address().to_string();
 
+    env::set_var("RUST_LOG", "TRACE");
     env::set_var("RELAY_TARGET", &format!("{}{}", "http://", &target));
     env::set_var("RELAY_TIMEOUT", "3");
 
@@ -29,6 +32,9 @@ async fn test_post_http11() {
     *request.uri_mut() = "https://example.com/test".parse().unwrap();
     *request.method_mut() = Method::POST;
     *request.version_mut() = Version::HTTP_11;
+    request
+        .extensions_mut()
+        .insert(RequestContext::mock(Method::POST));
 
     // Test the `entry` function.
     let response = entry(request, Context::default())
@@ -37,7 +43,7 @@ async fn test_post_http11() {
         .into_response();
 
     assert_eq!(StatusCode::ACCEPTED, response.status());
-    assert_eq!(response.into_body(), Body::Binary("success".into()));
+    assert_eq!(response.into_body(), Body::Binary(b"success".to_vec()));
 }
 
 // HTTP/2 POST payload.
@@ -52,6 +58,7 @@ async fn test_post_http2() {
         .await;
     let target = server.address().to_string();
 
+    env::set_var("RUST_LOG", "TRACE");
     env::set_var("RELAY_TARGET", &format!("{}{}", "http://", &target));
     env::set_var("RELAY_TIMEOUT", "3");
 
@@ -60,6 +67,9 @@ async fn test_post_http2() {
     *request.uri_mut() = "https://example.com/test".parse().unwrap();
     *request.method_mut() = Method::POST;
     *request.version_mut() = Version::HTTP_2;
+    request
+        .extensions_mut()
+        .insert(RequestContext::mock(Method::POST));
 
     // Test the `entry` function.
     let response = entry(request, Context::default())
@@ -68,7 +78,7 @@ async fn test_post_http2() {
         .into_response();
 
     assert_eq!(StatusCode::ACCEPTED, response.status());
-    assert_eq!(response.into_body(), Body::Binary("success".into()));
+    assert_eq!(response.into_body(), Body::Binary(b"success".to_vec()));
 }
 
 // TODO: wiremock needs https support
@@ -82,6 +92,7 @@ async fn test_post_http2() {
 //         .await;
 //     let target = server.address().to_string();
 
+//     env::set_var("RUST_LOG", "TRACE");
 //     env::set_var("RELAY_TARGET", &format!("{}{}", "https://", &target));
 //     env::set_var("RELAY_TIMEOUT", "3");
 
@@ -90,6 +101,9 @@ async fn test_post_http2() {
 //     *request.uri_mut() = "https://example.com/test".parse().unwrap();
 //     *request.method_mut() = Method::POST;
 //     *request.version_mut() = Version::HTTP_2;
+//     request
+//         .extensions_mut()
+//         .insert(RequestContext::mock(Method::POST));
 
 //     // Test the function.
 //     let response = entry(request, Context::default())
@@ -98,5 +112,5 @@ async fn test_post_http2() {
 //         .into_response();
 
 //     assert_eq!(StatusCode::ACCEPTED, response.status());
-//     assert_eq!(response.into_body(), Body::Binary("success".into()));
+//     assert_eq!(response.into_body(), Body::Binary(b"success".to_vec()));
 // }
