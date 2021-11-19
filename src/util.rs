@@ -59,3 +59,43 @@ impl IntoLambdaBody for bytes::Bytes {
         }
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    use std::collections::HashMap;
+
+    use lambda_http::http::Method;
+    use lambda_http::request::{ApiGatewayV2RequestContext, Http, RequestContext};
+
+    /// A mock API Gateway v2 request context to be added to an HTTP request's extensions.
+    pub trait MockRequestContext {
+        /// Creates a mock request context.
+        fn mock(m: Method) -> Self
+        where
+            Self: Sized;
+    }
+
+    impl MockRequestContext for RequestContext {
+        fn mock(m: Method) -> Self {
+            Self::ApiGatewayV2(ApiGatewayV2RequestContext {
+                account_id: "".to_owned(),
+                api_id: "".to_owned(),
+                authorizer: HashMap::default(),
+                domain_name: "".to_owned(),
+                domain_prefix: "".to_owned(),
+                http: Http {
+                    method: m,
+                    path: "".to_owned(),
+                    protocol: "".to_owned(),
+                    source_ip: "127.0.0.1".to_owned(),
+                    user_agent: "".to_owned(),
+                },
+                request_id: "".to_owned(),
+                route_key: "".to_owned(),
+                stage: "".to_owned(),
+                time: "".to_owned(),
+                time_epoch: 0,
+            })
+        }
+    }
+}
