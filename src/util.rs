@@ -6,13 +6,13 @@ use lambda_http::request::{
 };
 
 /// Get the request context from a `lambda_http::Request`'s extensions.
-trait GetRequestContext<'a> {
+pub trait GetRequestContext<'req> {
     /// Get the request context if it exists.
-    fn context(&'a self) -> Result<&'a RequestContext, lambda_runtime::Error>;
+    fn context(&'req self) -> Result<&'req RequestContext, lambda_runtime::Error>;
 }
 
-impl<'a> GetRequestContext<'a> for lambda_http::Request {
-    fn context(&'a self) -> Result<&'a RequestContext, lambda_runtime::Error> {
+impl<'req> GetRequestContext<'req> for lambda_http::Request {
+    fn context(&'req self) -> Result<&'req RequestContext, lambda_runtime::Error> {
         Ok(self
             .extensions()
             .get::<RequestContext>()
@@ -20,35 +20,25 @@ impl<'a> GetRequestContext<'a> for lambda_http::Request {
     }
 }
 
-/// Get the request ID from a `lambda_http::Request`.
-pub trait GetRequestId<'a> {
-    /// Get the request ID if it exists.
-    fn id(&'a self) -> Result<&'a str, lambda_runtime::Error>;
+/// Extract information from a `RequestContext`.
+pub trait GetContextInfo<'req> {
+    /// Get the request ID.
+    fn request_id(&'req self) -> &'req str;
+    /// Get the source IP address.
+    fn source_ip(&'req self) -> &'req str;
 }
 
-impl<'a> GetRequestId<'a> for lambda_http::Request {
-    fn id(&'a self) -> Result<&'a str, lambda_runtime::Error> {
-        match self.context()? {
+impl<'req> GetContextInfo<'req> for RequestContext {
+    fn request_id(&'req self) -> &'req str {
+        match self {
             RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext { request_id, .. })
-            | RequestContext::ApiGateway(ApiGatewayRequestContext { request_id, .. }) => {
-                Ok(request_id)
-            }
-            RequestContext::Alb(_) => {
-                Err(Box::from("request came from an Application Load Balancer"))
-            }
+            | RequestContext::ApiGateway(ApiGatewayRequestContext { request_id, .. }) => request_id,
+            RequestContext::Alb(_) => "",
         }
     }
-}
 
-/// Get the source IP address from a `lambda_http::Request`.
-pub trait GetSourceIp<'a> {
-    /// Get the source IP address if it exists.
-    fn source_ip(&'a self) -> Result<&'a str, lambda_runtime::Error>;
-}
-
-impl<'a> GetSourceIp<'a> for lambda_http::Request {
-    fn source_ip(&'a self) -> Result<&'a str, lambda_runtime::Error> {
-        match self.context()? {
+    fn source_ip(&'req self) -> &'req str {
+        match self {
             RequestContext::ApiGatewayV2(ApiGatewayV2RequestContext {
                 http: Http { source_ip, .. },
                 ..
@@ -56,10 +46,8 @@ impl<'a> GetSourceIp<'a> for lambda_http::Request {
             | RequestContext::ApiGateway(ApiGatewayRequestContext {
                 identity: Identity { source_ip, .. },
                 ..
-            }) => Ok(source_ip),
-            RequestContext::Alb(_) => {
-                Err(Box::from("request came from an Application Load Balancer"))
-            }
+            }) => source_ip,
+            RequestContext::Alb(_) => "",
         }
     }
 }

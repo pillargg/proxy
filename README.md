@@ -35,9 +35,15 @@ cargo build --release
 
 ## Test
 
+### Unit tests
+
 ```sh
-cargo test --release --all-targets
+cargo test --release
 ```
+
+### Integration tests
+
+*TODO*
 
 ## Dependencies
 
@@ -46,6 +52,8 @@ cargo test --release --all-targets
 - [`lambda_http`](https://lib.rs/crates/lambda_http) Library for AWS API Gateway proxy event focused AWS Lambda functions
 
   - [`lambda_runtime`](https://lib.rs/crates/lambda_runtime) AWS Lambda runtime
+
+- [`lazy_static`](https://lib.rs/crates/lazy_static) Runtime initialized statics
 
 - [`reqwest`](https://lib.rs/crates/reqwest) Async HTTP Client
 
