@@ -18,18 +18,17 @@ async fn test_post_http11() {
     let server = MockServer::start().await;
     Mock::given(matchers::method("POST"))
         .and(matchers::path("/"))
-        .respond_with(ResponseTemplate::new(202).set_body_string("success"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("success"))
         .mount(&server)
         .await;
     let target = server.address();
 
-    env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RUST_LOG", "TRACE");
     env::set_var("RELAY_TARGET", format!("{}{}", "http://", target));
     env::set_var("RELAY_TIMEOUT", "3");
 
     let mut request = Request::new(Body::from("test"));
-    *request.uri_mut() = "https://example.com/test".parse().unwrap();
+    *request.uri_mut() = "https://example.com/post".parse().unwrap();
     *request.method_mut() = Method::POST;
     *request.version_mut() = Version::HTTP_11;
     request
@@ -41,7 +40,7 @@ async fn test_post_http11() {
         .unwrap()
         .into_response();
 
-    assert_eq!(response.status(), StatusCode::ACCEPTED);
+    assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.into_body(), Body::Binary(b"success".to_vec()));
 }
 
@@ -52,18 +51,17 @@ async fn test_post_http2() {
     let server = MockServer::start().await;
     Mock::given(matchers::method("POST"))
         .and(matchers::path("/"))
-        .respond_with(ResponseTemplate::new(202).set_body_string("success"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("success"))
         .mount(&server)
         .await;
     let target = server.address();
 
-    env::set_var("RUST_BACKTRACE", "1");
     env::set_var("RUST_LOG", "TRACE");
     env::set_var("RELAY_TARGET", format!("{}{}", "http://", target));
     env::set_var("RELAY_TIMEOUT", "3");
 
     let mut request = Request::new(Body::from("test"));
-    *request.uri_mut() = "https://example.com/test".parse().unwrap();
+    *request.uri_mut() = "https://example.com/post".parse().unwrap();
     *request.method_mut() = Method::POST;
     *request.version_mut() = Version::HTTP_2;
     request
@@ -75,6 +73,6 @@ async fn test_post_http2() {
         .unwrap()
         .into_response();
 
-    assert_eq!(response.status(), StatusCode::ACCEPTED);
+    assert_eq!(response.status(), StatusCode::OK);
     assert_eq!(response.into_body(), Body::Binary(b"success".to_vec()));
 }
