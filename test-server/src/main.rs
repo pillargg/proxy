@@ -3,8 +3,8 @@
 //! HTTP server for testing.
 //!
 //! Runs on port 8080 or a port specified with the `$RELAY_TEST_PORT` environment variable. All
-//! successful requests contain the body "success". All failed requests return a 404 status with the
-//! body "not found".
+//! successful requests contain the body "success". All failed requests return a 404 with the body
+//! "not found".
 //!
 //! /get accepts GET requests and responds with 200.
 //! /post accepts POST requests and responds with 202.
