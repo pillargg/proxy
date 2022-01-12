@@ -33,7 +33,7 @@ version = "0.3.2"
 features = ["fmt", "parking_lot"]
 
 [dev-dependencies]
-wiremock = "0.5.8"
+wiremock = "0.5.9"
 
 [profile.dev]
 debug = 0
