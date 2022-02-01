@@ -16,7 +16,7 @@ categories = ["web-programming::http-client", "network-programming"]
 [dependencies]
 bytes = "1.1.0"
 lambda_http = "0.4.1"
-tokio = "1.15.0"
+tokio = "1.16.1"
 lazy_static = "1.4.0"
 
 [dependencies.reqwest]
