@@ -25,7 +25,7 @@ default-features = false
 features = ["rustls-tls"]
 
 [dependencies.tracing]
-version = "0.1.29"
+version = "0.1.31"
 features = ["attributes"]
 
 [dependencies.tracing-subscriber]
